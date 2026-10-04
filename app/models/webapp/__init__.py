@@ -52,11 +52,14 @@ from app.models.webapp.common import (
     WebAppUserData,
 )
 from app.models.webapp.renew import (
+    RenewPanelItem,
     RenewPlanItem,
     WebAppRenewConfirmRequest,
     WebAppRenewConfirmResponse,
     WebAppRenewOptionsRequest,
     WebAppRenewOptionsResponse,
+    WebAppRenewPlansRequest,
+    WebAppRenewPlansResponse,
 )
 from app.models.webapp.services import (
     PanelGroupItem,

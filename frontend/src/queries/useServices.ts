@@ -93,15 +93,41 @@ export function useRenewOptionsQuery(code: number | null) {
   });
 }
 
+export function useRenewPlansQuery(
+  code: number | null,
+  panelCode: number | null,
+  duration: number | null
+) {
+  const { auth, ready } = useWebAppAuth();
+
+  return useQuery({
+    queryKey: ["renew-plans", code, panelCode, duration, auth?.session_token, auth?.init_data],
+    queryFn: () =>
+      renewApi.getRenewPlans({
+        ...auth!,
+        code: code!,
+        panel_code: panelCode!,
+        duration,
+      }),
+    enabled: ready && auth != null && code != null && panelCode != null && !Number.isNaN(code),
+  });
+}
+
 export function useRenewConfirmMutation() {
   const { auth } = useWebAppAuth();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (body: { code: number; planId: number; discountCode?: string }) =>
+    mutationFn: (body: {
+      code: number;
+      panelCode: number;
+      planId: number;
+      discountCode?: string;
+    }) =>
       renewApi.confirmRenew({
         ...auth!,
         code: body.code,
+        panel_code: body.panelCode,
         plan_id: body.planId,
         discount_code: body.discountCode?.trim() || null,
       }),

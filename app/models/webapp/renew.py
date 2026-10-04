@@ -2,12 +2,17 @@
 
 from pydantic import BaseModel, Field
 
+from app.models.webapp.common import WebAppAuthRequest
+
+
+class RenewPanelItem(BaseModel):
+    code: int
+    name: str
+    display_mode: str = "classic"
+    durations: list[int] = Field(default_factory=list)
+
 
 class RenewPlanItem(BaseModel):
-    """Single plan for renewal (raw fields only -- the webapp frontend builds its
-    own bilingual plan label from storage/ip_limit rather than a server-formatted
-    Persian plan_name)."""
-
     id: int
     storage: float
     duration: int
@@ -17,43 +22,48 @@ class RenewPlanItem(BaseModel):
     ip_limit: int = 0
 
 
-class WebAppRenewOptionsRequest(BaseModel):
-    """Request for renewal options (durations and plans)."""
-
+class WebAppRenewOptionsRequest(WebAppAuthRequest):
     code: int = Field(..., description="Service code")
-    session_token: str | None = Field(None, description="Session token from login")
-    init_data: str | None = Field(None, description="Telegram init data")
 
 
 class WebAppRenewOptionsResponse(BaseModel):
-    """Response with renewal options."""
-
     ok: bool
     service_code: str | None = None
-    panel_name: str | None = None
+    current_panel_code: int | None = None
+    current_panel_name: str | None = None
     is_fair_usage: bool = False
-    durations: list[int] | None = None
-    plans: list[RenewPlanItem] | None = None
+    panels: list[RenewPanelItem] = Field(default_factory=list)
     error: str | None = None
 
 
-class WebAppRenewConfirmRequest(BaseModel):
-    """Request to confirm renewal (with optional discount code)."""
-
+class WebAppRenewPlansRequest(WebAppAuthRequest):
     code: int = Field(..., description="Service code")
+    panel_code: int = Field(..., description="Selected panel code")
+    duration: int | None = Field(None, description="Optional selected duration")
+
+
+class WebAppRenewPlansResponse(BaseModel):
+    ok: bool
+    panel: RenewPanelItem | None = None
+    durations: list[int] = Field(default_factory=list)
+    plans: list[RenewPlanItem] = Field(default_factory=list)
+    is_fair_usage: bool = False
+    error: str | None = None
+
+
+class WebAppRenewConfirmRequest(WebAppAuthRequest):
+    code: int = Field(..., description="Service code")
+    panel_code: int = Field(..., description="Selected panel code")
     plan_id: int = Field(..., description="Selected plan id")
     discount_code: str | None = Field(None, description="Optional discount code")
-    session_token: str | None = Field(None, description="Session token from login")
-    init_data: str | None = Field(None, description="Telegram init data")
 
 
 class WebAppRenewConfirmResponse(BaseModel):
-    """Response after renewal confirm."""
-
     ok: bool
     message: str | None = None
     new_balance: int | None = None
     new_volume_bytes: int | None = None
     amount_paid: int | None = None
     config_name: str | None = None
+    panel_name: str | None = None
     error: str | None = None

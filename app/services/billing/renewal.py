@@ -99,31 +99,35 @@ async def apply_panel_user_renewal(
     plan: Any,
     *,
     api: PasarguardAPI | None = None,
+    group_ids: list[int] | None = None,
+    token: str | None = None,
 ) -> int:
     """Apply renewal on Pasarguard panel. Returns new data_limit in bytes."""
     if api is None:
         api = PasarguardAPI(panel.base_url)
 
+    auth_token = token or panel.cookie
     new_hajm, reset_usage = compute_renewal_data_limit_bytes(panel, panel_user, plan)
     reset_strategy = _renewal_reset_strategy(plan)
     ip_limit = getattr(plan, "ip_limit", 0) or 0
 
-    # Reset usage before lowering/setting data_limit — otherwise used_traffic can exceed
-    # the new limit briefly and Pasarguard fires a volume-exhausted webhook.
     if reset_usage:
-        await api.reset_user_data_usage_by_id(user_id=panel_userid, token=panel.cookie)
+        await api.reset_user_data_usage_by_id(user_id=panel_userid, token=auth_token)
+
+    modify_kwargs: dict[str, Any] = {
+        "data_limit": new_hajm,
+        "expire": plan_duration_to_expire(plan.duration),
+        "data_limit_reset_strategy": reset_strategy,
+        "hwid_limit": ip_limit if ip_limit > 0 else 0,
+    }
+    if group_ids is not None:
+        modify_kwargs["group_ids"] = group_ids
 
     await api.modify_user_by_id(
         user_id=panel_userid,
-        user=UserModify(
-            data_limit=new_hajm,
-            expire=plan_duration_to_expire(plan.duration),
-            data_limit_reset_strategy=reset_strategy,
-            hwid_limit=ip_limit if ip_limit > 0 else 0,
-        ),
-        token=panel.cookie,
+        user=UserModify(**modify_kwargs),
+        token=auth_token,
     )
-
     return new_hajm
 
 
@@ -134,12 +138,10 @@ async def execute_paid_service_renewal(
     *,
     price: int,
     panel_user: Any,
+    group_ids: list[int] | None = None,
+    new_panel_code: int | None = None,
+    panel_cookie_for_modify: str | None = None,
 ) -> tuple[int, int]:
-    """
-    Deduct wallet balance, renew on panel, update service row.
-    Refunds balance if panel/DB update fails after deduction.
-    Returns (new_data_limit_bytes, new_balance).
-    """
     user_id = int(service.id)
     service_crud = ServiceCRUD()
     api = PasarguardAPI(panel.base_url)
@@ -156,9 +158,19 @@ async def execute_paid_service_renewal(
         "expire_notified": False,
         "ip_limit": getattr(plan, "ip_limit", 0) or 0,
     }
+    if new_panel_code is not None:
+        service_updates["in_panel"] = int(new_panel_code)
 
     try:
-        new_hajm = await apply_panel_user_renewal(panel, panel_userid, panel_user, plan, api=api)
+        new_hajm = await apply_panel_user_renewal(
+            panel,
+            panel_userid,
+            panel_user,
+            plan,
+            api=api,
+            group_ids=group_ids,
+            token=panel_cookie_for_modify or panel.cookie,
+        )
         await service_crud.update_service(
             code=service.code,
             package_size=int(new_hajm),
