@@ -641,7 +641,7 @@ class ServiceCRUD:
                 filters = [
                     Service.in_panel.in_(panel_codes),
                     Service.expiration_time.isnot(None),
-                    (Service.expiration_time + 259200) <= current_time,
+                    (Service.expiration_time + 2592000) <= current_time,
                     or_(Service.is_test.is_(None), Service.is_test == False),  # noqa: E712
                 ]
                 if after_expiration_time is not None and after_code is not None:

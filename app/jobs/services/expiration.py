@@ -295,7 +295,7 @@ async def handle_service_expiration():
                 and service.expiration_time <= current_time
                 and service.warning == 0
             ):
-                days_remaining = 3
+                days_remaining = 30
                 warn_text = (
                     f"<b>#اطلاع_رسانی</b>\n\n"
                     f"<b>#⃣ کد سرویس(در ربات): {service.code}</b>\n"
