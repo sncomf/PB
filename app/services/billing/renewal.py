@@ -43,17 +43,9 @@ def compute_renewal_data_limit_bytes(panel: Any, panel_user: Any, plan: Any) -> 
     Returns:
         (new_data_limit_bytes, reset_used_traffic)
     """
-    gig = float(plan.storage)
-    purchased_bytes = gigabytes_to_bytes(gig)
-
-    if is_fair_usage_plan(plan):
-        return purchased_bytes, True
-
-    current_limit = int(getattr(panel_user, "data_limit", 0) or 0)
-    if panel_renew_uses_remaining_volume(panel):
-        return get_remaining_volume_bytes(panel_user) + purchased_bytes, True
-
-    return current_limit + purchased_bytes, False
+    purchased_bytes = gigabytes_to_bytes(float(plan.storage))
+    # تمدید = حجم پلن انتخاب‌شده + ریست مصرف
+    return purchased_bytes, True
 
 
 def preview_remaining_after_renewal(panel: Any, panel_user: Any, plan: Any) -> tuple[int, int]:
