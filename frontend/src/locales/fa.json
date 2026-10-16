@@ -441,7 +441,11 @@
     "extraVolume": "افزایش حجم",
     "extraVolumeHint": "خرید حجم اضافه",
     "transferConfig": "واگذاری",
-    "transferConfigHint": "انتقال به کاربر دیگر"
+    "transferConfigHint": "انتقال به کاربر دیگر",
+	"enable": "فعال کردن",
+    "enableHint": "سرویس دوباره در پنل فعال می‌شود",
+    "disable": "غیرفعال کردن",
+    "disableHint": "سرویس در پنل غیرفعال می‌شود"
   },
   "transaction": {
     "paid": "تایید شده",

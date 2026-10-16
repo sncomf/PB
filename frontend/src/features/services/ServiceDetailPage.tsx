@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import QRCode from "qrcode";
 import { useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
+import { Power, PowerOff } from "lucide-react";
 import {
   Activity,
   ArrowDownToLine,
@@ -39,6 +40,7 @@ import {
   useChangeLinkMutation,
   useChangeSubscriptionMutation,
   useServiceDetailQuery,
+  useToggleServiceStatusMutation,
 } from "../../queries/useServices";
 import type { ServiceButtons } from "../../types/webapp";
 import { ClientsSheet } from "./ClientsSheet";
@@ -294,6 +296,7 @@ export default function ServiceDetailPage() {
   const { data, isLoading, error, refetch } = useServiceDetailQuery(code);
   const changeLink = useChangeLinkMutation();
   const changeSub = useChangeSubscriptionMutation();
+  const toggleStatus = useToggleServiceStatusMutation();
 
   const [copied, setCopied] = useState<string | null>(null);
   const [linksOpen, setLinksOpen] = useState(false);
@@ -340,6 +343,22 @@ export default function ServiceDetailPage() {
       onError: (err) => setActionError((err as Error).message),
     });
   };
+  
+    const handleToggleStatus = (disabled: boolean) => {
+    if (code == null) return;
+    haptic.impact("medium");
+    setActionError("");
+    toggleStatus.mutate(
+      { code, disabled },
+      {
+        onSuccess: () => {
+          haptic.notify("success");
+          void refetch();
+        },
+        onError: (err) => setActionError((err as Error).message),
+      },
+    );
+  };
 
   if (!ready || code == null || Number.isNaN(code)) {
     return (
@@ -367,6 +386,11 @@ export default function ServiceDetailPage() {
       </div>
     );
   }
+  
+
+  
+
+
 
   const expiry = formatExpiry(service.expiration_timestamp);
   const tone = statusTone(service.status);
@@ -659,6 +683,27 @@ export default function ServiceDetailPage() {
                     onClick={action.onClick}
                   />
                 ))}
+
+              {/* Enable / Disable — همین‌جا */}
+              {!service.is_test && service.status !== "expired" && service.status === "disabled" && (
+                <ActionTile
+                  icon={Power}
+                  label={t("serviceDetail.enable")}
+                  hint={t("serviceDetail.enableHint")}
+                  loading={toggleStatus.isPending}
+                  onClick={() => handleToggleStatus(false)}
+                />
+              )}
+              {!service.is_test && service.status !== "expired" && service.status !== "disabled" && (
+                <ActionTile
+                  icon={PowerOff}
+                  label={t("serviceDetail.disable")}
+                  hint={t("serviceDetail.disableHint")}
+                  danger
+                  loading={toggleStatus.isPending}
+                  onClick={() => handleToggleStatus(true)}
+                />
+              )}
             </motion.div>
           </Section>
 

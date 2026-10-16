@@ -93,3 +93,12 @@ export interface WebAppClientsResponse {
   clients: WebAppClientItem[];
   error?: string | null;
 }
+
+
+export interface WebAppToggleStatusRequest {
+  code: number;
+  disabled: boolean;
+  init_data?: string | null;
+  session_token?: string | null;
+}
+

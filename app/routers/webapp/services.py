@@ -6,7 +6,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from fastapi import APIRouter
-from pasarguard import PasarguardAPI, ProxySettings, UserModify
+from pasarguard import PasarguardAPI, ProxySettings, UserModify, UserStatusToggle
 
 from app.db.crud.panels import PanelsManager
 from app.db.crud.services import ServiceCRUD, get_user_service_panel_counts, get_user_services_paginated
@@ -28,6 +28,7 @@ from app.models.webapp import (
     WebAppServiceDetailResponse,
     WebAppServicesRequest,
     WebAppServicesResponse,
+    WebAppToggleStatusRequest,
 )
 from app.routers.webapp.auth import authenticate_user
 from app.services.billing.renewal import require_panel_userid
@@ -434,7 +435,63 @@ async def _change_user_subscription(service_code: int, user_id: int) -> str:
     )
 
     return subscription_url
+    
+async def _set_service_disabled(service_code: int, user_id: int, disabled: bool) -> None:
+    """Enable/disable the panel user that backs this service.
 
+    Uses the dedicated Pasarguard endpoint so status transitions are correct
+    even when the user is limited / on_hold (not only active).
+    """
+    service, panel = await _resolve_owned_service(service_code, user_id)
+
+    if getattr(service, "is_test", False) is True:
+        raise ValueError("سرویس‌های تست قابل تغییر وضعیت نیستند.")
+
+    panel_userid = require_panel_userid(service)
+    marzban_api = PasarguardAPI(panel.base_url)
+
+    # Optional: reject expired (panel may refuse enable on expired users)
+    try:
+        current = await marzban_api.get_user_by_id(user_id=panel_userid, token=panel.cookie)
+        current_status = str(getattr(current, "status", "") or "").lower()
+    except Exception:
+        current_status = ""
+
+    if current_status == "expired":
+        raise ValueError("سرویس منقضی شده؛ ابتدا تمدید کنید.")
+
+    if disabled and current_status == "disabled":
+        return  # already disabled — idempotent
+    if not disabled and current_status == "active":
+        return  # already active — idempotent
+
+    try:
+        await marzban_api.set_user_disabled_by_id(
+            user_id=panel_userid,
+            status=UserStatusToggle(disabled=disabled),
+            token=panel.cookie,
+        )
+    except Exception as e:
+        logger.exception(
+            "toggle status failed service=%s disabled=%s: %s",
+            service_code,
+            disabled,
+            e,
+        )
+        raise ValueError("خطا در ارتباط با پنل. دوباره تلاش کنید.") from e
+
+    label = "غیرفعال" if disabled else "فعال"
+    await enqueue(
+        message=(
+            f"🔄 **تغییر وضعیت سرویس (وب‌اپ)**\n\n"
+            f"👻 شناسه کاربر: `{user_id}`\n"
+            f"🎫 کد سرویس: `{service_code}`\n"
+            f"👤 یوزرنیم: `{service.username}`\n"
+            f"📌 وضعیت جدید: `{label}`\n"
+            f"📅 {Time_Date()['jf']}"
+        ),
+        log_type=LogType.OTHER,
+    )
 
 @router.post("/webapp/services", response_model=WebAppServicesResponse)
 async def get_webapp_services(request: WebAppServicesRequest) -> WebAppServicesResponse:
@@ -591,3 +648,20 @@ async def change_user_subscription(request: WebAppChangeSubscriptionRequest) -> 
         return WebAppChangeResponse(ok=False, error=str(e))
     except Exception as e:
         return WebAppChangeResponse(ok=False, error=str(e))
+        
+
+@router.post("/webapp/services/toggle-status", response_model=WebAppChangeResponse)
+async def toggle_service_status(request: WebAppToggleStatusRequest) -> WebAppChangeResponse:
+    """Enable or disable a service on the Pasarguard panel."""
+    try:
+        user_id = await authenticate_user(
+            init_data=request.init_data,
+            session_token=request.session_token,
+        )
+        await _set_service_disabled(request.code, user_id, request.disabled)
+        return WebAppChangeResponse(ok=True)
+    except ValueError as e:
+        return WebAppChangeResponse(ok=False, error=str(e))
+    except Exception as e:
+        logger.exception("toggle-status failed: %s", e)
+        return WebAppChangeResponse(ok=False, error="خطای داخلی سرور")

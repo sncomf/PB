@@ -75,6 +75,7 @@ from app.models.webapp.services import (
     WebAppServiceDetailResponse,
     WebAppServicesRequest,
     WebAppServicesResponse,
+    WebAppToggleStatusRequest,
 )
 from app.models.webapp.transactions import (
     WebAppTransactionItem,
@@ -181,4 +182,5 @@ __all__ = [
     "WebAppUsageChartResponse",
     "WebAppUsageChartSeriesItem",
     "WebAppUserData",
+    "WebAppToggleStatusRequest",
 ]

@@ -202,3 +202,20 @@ export function useTransferConfigMutation() {
     },
   });
 }
+
+
+export function useToggleServiceStatusMutation() {
+  const { auth } = useWebAppAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (body: { code: number; disabled: boolean }) => {
+      if (!auth) throw new Error("Not authenticated");
+      return servicesApi.toggleServiceStatus({ ...auth, ...body });
+    },
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: ["service-detail", variables.code] });
+      void queryClient.invalidateQueries({ queryKey: ["services"] });
+    },
+  });
+}

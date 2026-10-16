@@ -4,6 +4,8 @@ from pydantic import BaseModel, Field
 
 from app.models.webapp.common import ServiceButtons, ServiceStatus
 
+from typing import Literal
+
 
 class WebAppChangeLinkRequest(BaseModel):
     """Request to change user's proxy link."""
@@ -114,3 +116,12 @@ class WebAppClientsResponse(BaseModel):
     ok: bool
     clients: list[WebAppClientItem] = Field(default_factory=list)
     error: str | None = None
+
+
+class WebAppToggleStatusRequest(BaseModel):
+    """فعال یا غیرفعال کردن سرویس در پنل پاسارگارد."""
+
+    code: int = Field(..., description="Service code")
+    disabled: bool = Field(..., description="True = disable, False = enable")
+    init_data: str | None = Field(None, description="Telegram init data")
+    session_token: str | None = Field(None, description="Session token from OTP login")

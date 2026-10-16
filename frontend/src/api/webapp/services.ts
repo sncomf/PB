@@ -10,6 +10,7 @@ import type {
   WebAppServiceDetailResponse,
   WebAppServicesRequest,
   WebAppServicesResponse,
+  WebAppToggleStatusRequest,
 } from "../../types/webapp";
 import { apiPost } from "./client";
 
@@ -35,4 +36,8 @@ export function changeLink(body: WebAppChangeLinkRequest) {
 
 export function changeSubscription(body: WebAppChangeSubscriptionRequest) {
   return apiPost<WebAppChangeResponse>("/change_sub", body);
+}
+
+export function toggleServiceStatus(body: WebAppToggleStatusRequest) {
+  return apiPost<WebAppChangeResponse>("/services/toggle-status", body);
 }
