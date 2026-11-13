@@ -140,7 +140,7 @@ async def build_services_payload(
         }
 
     user_services, total = await get_user_services_paginated(
-        user_id, page=page, limit=limit, search=search, panel_code=panel_code
+        user_id, page=page, limit=limit, search=search, panel_code=panel_code, contains=True
     )
     services_data = await _process_services_from_db(user_services, hide_panel_name=grouping_enabled)
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
